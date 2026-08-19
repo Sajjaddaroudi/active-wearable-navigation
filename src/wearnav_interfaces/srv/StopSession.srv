@@ -1,0 +1,6 @@
+---
+bool success
+string session_id
+string session_directory
+string message
+

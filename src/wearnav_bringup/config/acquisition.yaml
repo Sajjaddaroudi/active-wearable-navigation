@@ -1,0 +1,17 @@
+fake_garmin_publisher:
+  ros__parameters:
+    sample_rate_hz: 25.0
+    batch_period_s: 1.0
+    frame_id: garmin_watch
+
+garmin_imu_converter:
+  ros__parameters:
+    frame_id: garmin_watch
+
+session_manager:
+  ros__parameters:
+    data_root: ""
+    sample_rate_hz: 25.0
+    batch_period_s: 1.0
+    frame_id: garmin_watch
+
