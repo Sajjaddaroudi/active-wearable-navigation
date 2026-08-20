@@ -1,6 +1,6 @@
 # WearNav ROS 2 Acquisition
 
-WearNav is a research ROS 2 stack for wearable indoor navigation and object-finding. This repository covers the data-acquisition path only, using simulated Garmin watch IMU data.
+WearNav is a research ROS 2 stack for wearable indoor navigation and object-finding. This repository covers the data-acquisition path only, using simulated Garmin watch IMU data or Garmin-shaped batches from a generic external application.
 
 ```text
 fake Garmin data -> /wearnav/garmin/imu_raw -> converter -> /wearnav/garmin/imu
@@ -10,7 +10,7 @@ fake Garmin data -> /wearnav/garmin/imu_raw -> converter -> /wearnav/garmin/imu
 ## Packages
 
 - `wearnav_interfaces`: raw Garmin batch and session service definitions.
-- `garmin_bridge`: fake Garmin publisher and IMU converter.
+- `garmin_bridge`: fake Garmin publisher, generic app bridge, and IMU converter.
 - `wearnav_recorder`: session services, metadata, and rosbag2 recording.
 - `wearnav_bringup`: launch and acquisition configuration.
 
@@ -19,6 +19,7 @@ fake Garmin data -> /wearnav/garmin/imu_raw -> converter -> /wearnav/garmin/imu
 - Ubuntu 22.04
 - ROS 2 Humble ros-base
 - `rosbag2`, `ros-dev-tools`, `colcon`, `rosdep`
+- `python3-websockets`
 
 ## Build
 
@@ -32,8 +33,28 @@ source install/setup.bash
 
 ## Launch
 
+Fake development source:
+
 ```bash
 ros2 launch wearnav_bringup fake_system.launch.py
+```
+
+Generic external application source:
+
+```bash
+ros2 launch wearnav_bringup app_system.launch.py
+```
+
+## Generic External App Bridge
+
+`app_command_bridge` listens for WebSocket JSON messages on `0.0.0.0:8765` by default. It accepts protocol version `1` messages of type `hello`, `ping`, `start_session`, `stop_session`, and `imu_batch`.
+
+The bridge is platform independent. Android, iPhone, Windows, Linux, web, or embedded clients can all use the same JSON protocol later. The bridge publishes Garmin-shaped IMU batches to `/wearnav/garmin/imu_raw` and delegates recording control to the existing `/wearnav/session/start` and `/wearnav/session/stop` services.
+
+Local test client:
+
+```bash
+python3 scripts/test_app_client.py --host 127.0.0.1 --label app_bridge_test
 ```
 
 ## Recording
@@ -70,5 +91,4 @@ cd ~/REPOS/wearnav_ros2
 
 ## Next Step
 
-Replace `fake_garmin_publisher` with a network receiver fed by Garmin FR165 data through Android while keeping `/wearnav/garmin/imu_raw` unchanged.
-
+Connect a real external application to `app_command_bridge` while keeping `/wearnav/garmin/imu_raw` unchanged.

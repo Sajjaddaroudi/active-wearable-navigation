@@ -19,9 +19,9 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
+            "app_command_bridge = garmin_bridge.app_command_bridge:main",
             "fake_garmin_publisher = garmin_bridge.fake_garmin_publisher:main",
             "garmin_imu_converter = garmin_bridge.garmin_imu_converter:main",
         ],
     },
 )
-

@@ -21,8 +21,10 @@ if [ ! -f /opt/ros/humble/setup.bash ]; then
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo "$UBUNTU_CODENAME") main" \
     | sudo tee /etc/apt/sources.list.d/ros2.list >/dev/null
   sudo apt update
-  sudo apt install -y ros-humble-ros-base ros-dev-tools python3-colcon-common-extensions python3-rosdep
+  sudo apt install -y ros-humble-ros-base ros-dev-tools python3-colcon-common-extensions python3-rosdep python3-websockets
 fi
+
+sudo apt install -y python3-websockets
 
 source /opt/ros/humble/setup.bash
 sudo rosdep init 2>/dev/null || true
@@ -30,4 +32,3 @@ rosdep update
 rosdep install --from-paths src --ignore-src -r -y
 colcon build --symlink-install
 echo "WearNav ROS 2 setup complete"
-

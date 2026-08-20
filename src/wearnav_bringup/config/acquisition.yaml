@@ -4,6 +4,12 @@ fake_garmin_publisher:
     batch_period_s: 1.0
     frame_id: garmin_watch
 
+app_command_bridge:
+  ros__parameters:
+    host: 0.0.0.0
+    port: 8765
+    frame_id: garmin_watch
+
 garmin_imu_converter:
   ros__parameters:
     frame_id: garmin_watch
@@ -14,4 +20,3 @@ session_manager:
     sample_rate_hz: 25.0
     batch_period_s: 1.0
     frame_id: garmin_watch
-
