@@ -40,14 +40,14 @@ def validate_envelope(data):
     return None
 
 
-def hello_response(data, recording=False):
+def hello_response(data, recording=False, session_id=UNASSIGNED_SESSION):
     response = {
         "type": "hello_ack",
         "version": PROTOCOL_VERSION,
         "server": SERVER_NAME,
+        "recording": bool(recording),
+        "session_id": session_id or UNASSIGNED_SESSION,
     }
-    if recording:
-        response["recording"] = True
     return response
 
 
@@ -91,4 +91,3 @@ def batch_from_json(data, session_id, stamp, frame_id, pi_receive_time_ns):
 
 def imu_ack(sequence):
     return {"type": "imu_batch_ack", "version": PROTOCOL_VERSION, "sequence": sequence}
-

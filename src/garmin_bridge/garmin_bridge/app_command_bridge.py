@@ -103,8 +103,8 @@ class AppCommandBridge(Node):
 
         msg_type = data["type"]
         if msg_type == "hello":
-            recording, _ = self._current_state()
-            return hello_response(data, recording)
+            recording, session_id = self._current_state()
+            return hello_response(data, recording, session_id)
         if msg_type == "ping":
             return ping_response()
         if msg_type == "start_session":

@@ -37,6 +37,8 @@ def test_valid_hello():
         "type": "hello_ack",
         "version": 1,
         "server": "wearnav_ros2",
+        "recording": False,
+        "session_id": "UNASSIGNED",
     }
 
 
@@ -101,4 +103,3 @@ def test_ros_batch_conversion():
     assert batch.phone_receive_time_ns == 1234567890
     assert batch.pi_receive_time_ns == 987654321
     assert imu_ack(batch.sequence) == {"type": "imu_batch_ack", "version": 1, "sequence": 12}
-
