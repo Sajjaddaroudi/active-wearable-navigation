@@ -20,6 +20,7 @@ setup(
     entry_points={
         "console_scripts": [
             "app_command_bridge = garmin_bridge.app_command_bridge:main",
+            "evaluate_imu = garmin_bridge.evaluate_imu:main",
             "fake_garmin_publisher = garmin_bridge.fake_garmin_publisher:main",
             "garmin_imu_converter = garmin_bridge.garmin_imu_converter:main",
         ],

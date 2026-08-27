@@ -80,6 +80,36 @@ ros2 bag info ~/wearnav_data/<session_id>/bag
 ros2 bag play ~/wearnav_data/<session_id>/bag
 ```
 
+## Validate Physical IMU Data
+
+With `app_system.launch.py` running and the phone sending watch data, run the
+evaluation for 15 seconds. Keep the watch still for a moment, then rotate it
+around several axes so the gyroscope can be verified:
+
+```bash
+./scripts/evaluate_imu.sh 15
+```
+
+The command prints each received batch and finishes with individual checks for
+the publisher identity, array integrity, timestamp/sample rate, transport gaps,
+gravity-scale acceleration, and rotation detected by the gyroscope. A successful
+physical six-axis stream ends with:
+
+```text
+RESULT: PASS - physical six-axis IMU data looks valid
+```
+
+The equivalent ROS command is:
+
+```bash
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 run garmin_bridge evaluate_imu --ros-args -p duration_s:=15.0
+```
+
+Add `-p show_samples:=true` to the ROS command to print every accelerometer and
+gyroscope sample rather than one summary line per batch.
+
 ## Raspberry Pi Deployment
 
 Clone this repository on Ubuntu 22.04 ARM64 and run:
