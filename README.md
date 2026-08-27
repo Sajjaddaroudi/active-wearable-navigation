@@ -80,35 +80,39 @@ ros2 bag info ~/wearnav_data/<session_id>/bag
 ros2 bag play ~/wearnav_data/<session_id>/bag
 ```
 
-## Validate Physical IMU Data
+## Evaluate a Recorded IMU Trial Offline
 
-With `app_system.launch.py` running and the phone sending watch data, run the
-evaluation for 15 seconds. Keep the watch still for a moment, then rotate it
-around several axes so the gyroscope can be verified:
+Evaluate one saved session directly from its rosbag. The phone, watch, bridge,
+and ROS launch system do not need to be running:
 
 ```bash
-./scripts/evaluate_imu.sh 15
+./scripts/evaluate_imu.sh ~/wearnav_data/<session_id>
 ```
 
-The command prints each received batch and finishes with individual checks for
-the publisher identity, array integrity, timestamp/sample rate, transport gaps,
-gravity-scale acceleration, and rotation detected by the gyroscope. A successful
-physical six-axis stream ends with:
+The path can be the session directory, its `bag/` directory, its bag
+`metadata.yaml`, or its `.db3` file. The command prints each recorded batch and
+checks array integrity, timestamp/sample rate, recorded batch cadence, transport
+gaps, gravity-scale acceleration, and gyroscope motion. A valid recorded
+six-axis trial ends with:
 
 ```text
-RESULT: PASS - physical six-axis IMU data looks valid
+RESULT: PASS - recorded six-axis IMU data looks valid
 ```
+
+This verifies the recorded values and timing. A rosbag does not retain enough
+publisher identity to prove by itself that the source was a physical watch, so
+the report marks source provenance as a warning rather than claiming it.
 
 The equivalent ROS command is:
 
 ```bash
 source /opt/ros/humble/setup.bash
 source install/setup.bash
-ros2 run garmin_bridge evaluate_imu --ros-args -p duration_s:=15.0
+ros2 run garmin_bridge evaluate_imu ~/wearnav_data/<session_id>
 ```
 
-Add `-p show_samples:=true` to the ROS command to print every accelerometer and
-gyroscope sample rather than one summary line per batch.
+Add `--show-samples` to print every accelerometer and gyroscope sample rather
+than one summary line per batch.
 
 ## Raspberry Pi Deployment
 

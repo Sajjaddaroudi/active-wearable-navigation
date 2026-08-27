@@ -68,8 +68,24 @@ def evaluate_batches(
     expected_sample_rate_hz=25.0,
     minimum_batches=5,
     minimum_gyro_peak_deg_s=5.0,
+    offline=False,
 ):
-    checks = [_publisher_check(publisher_names)]
+    if offline:
+        checks = [
+            CheckResult(
+                "recording",
+                "PASS",
+                "raw IMU batches were read directly from the saved rosbag",
+            ),
+            CheckResult(
+                "source provenance",
+                "WARN",
+                "a rosbag does not retain enough publisher identity to prove "
+                "that samples came from a physical watch",
+            ),
+        ]
+    else:
+        checks = [_publisher_check(publisher_names)]
     stats = {
         "batches": len(batches),
         "samples": 0,

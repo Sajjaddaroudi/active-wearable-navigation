@@ -37,6 +37,22 @@ def test_accepts_moving_physical_watch_data():
     assert report.statistics["gyro_peak_deg_s"] > 19.0
 
 
+def test_accepts_valid_offline_recording_without_live_publisher():
+    batches = [make_batch(i) for i in range(6)]
+    report = evaluate_batches(
+        batches,
+        arrival_times(len(batches)),
+        publisher_names=(),
+        offline=True,
+    )
+
+    assert report.passed
+    assert report.checks[0].name == "recording"
+    assert report.checks[0].status == "PASS"
+    assert report.checks[1].name == "source provenance"
+    assert report.checks[1].status == "WARN"
+
+
 def test_rejects_fake_publisher():
     batches = [make_batch(i) for i in range(6)]
     report = evaluate_batches(
