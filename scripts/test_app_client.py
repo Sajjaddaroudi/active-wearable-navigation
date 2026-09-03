@@ -26,6 +26,11 @@ def make_batch(sequence, start_ms, samples=25, sample_rate_hz=25.0):
         "gyro_x_deg_s": [2.0 * math.sin((sequence * samples + i) * 0.10) for i in indexes],
         "gyro_y_deg_s": [1.5 * math.sin((sequence * samples + i) * 0.07) for i in indexes],
         "gyro_z_deg_s": [3.0 * math.sin((sequence * samples + i) * 0.09) for i in indexes],
+        "mag_x_mgauss": [300.0 * math.cos((sequence * samples + i) * 0.02) for i in indexes],
+        "mag_y_mgauss": [300.0 * math.sin((sequence * samples + i) * 0.02) for i in indexes],
+        "mag_z_mgauss": [-450.0 for _ in indexes],
+        "altitude_m": 250.0 + 0.05 * sequence,
+        "altitude_available": True,
         "phone_receive_time_ns": time.time_ns(),
     }
 

@@ -14,6 +14,9 @@ def batch(stamps=(1000, 1040, 1080)):
         gyro_x_deg_s=values,
         gyro_y_deg_s=values,
         gyro_z_deg_s=values,
+        mag_x_mgauss=values,
+        mag_y_mgauss=values,
+        mag_z_mgauss=values,
     )
 
 

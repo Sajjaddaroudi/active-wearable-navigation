@@ -78,11 +78,16 @@ def print_batch(batch, show_samples=False):
             batch.gyro_z_deg_s,
         )
     )
+    mag_magnitude = math.sqrt(
+        batch.mag_x_mgauss[0] ** 2 + batch.mag_y_mgauss[0] ** 2 + batch.mag_z_mgauss[0] ** 2
+    )
+    altitude = f"{batch.altitude_m:.1f}m" if batch.altitude_available else "n/a"
     print(
         f"batch seq={batch.sequence:<6} samples={count:<3} "
         f"a0=({batch.accel_x_mg[0]:8.1f}, {batch.accel_y_mg[0]:8.1f}, "
         f"{batch.accel_z_mg[0]:8.1f}) mg |a0|={accel_magnitude:7.1f} mg "
-        f"gyro_peak={gyro_peak:8.2f} deg/s"
+        f"gyro_peak={gyro_peak:8.2f} deg/s "
+        f"mag0={mag_magnitude:7.1f} mGauss alt={altitude}"
     )
 
     if show_samples:

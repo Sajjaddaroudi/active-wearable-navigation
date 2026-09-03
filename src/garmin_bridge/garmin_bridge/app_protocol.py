@@ -15,6 +15,9 @@ IMU_FIELDS = (
     "gyro_x_deg_s",
     "gyro_y_deg_s",
     "gyro_z_deg_s",
+    "mag_x_mgauss",
+    "mag_y_mgauss",
+    "mag_z_mgauss",
 )
 
 
@@ -88,6 +91,15 @@ def batch_from_json(data, session_id, stamp, frame_id, pi_receive_time_ns):
     # real gyroscope (the pre-existing behavior), so evaluate_imu's
     # gyroscope check still fires normally for them.
     batch.gyro_available = bool(data.get("gyro_available", True))
+
+    batch.mag_x_mgauss = [float(v) for v in data["mag_x_mgauss"]]
+    batch.mag_y_mgauss = [float(v) for v in data["mag_y_mgauss"]]
+    batch.mag_z_mgauss = [float(v) for v in data["mag_z_mgauss"]]
+    batch.mag_available = bool(data.get("mag_available", True))
+
+    batch.altitude_m = float(data.get("altitude_m", 0.0))
+    batch.altitude_available = bool(data.get("altitude_available", False))
+
     batch.phone_receive_time_ns = int(data.get("phone_receive_time_ns", 0))
     batch.pi_receive_time_ns = pi_receive_time_ns
     return batch

@@ -18,6 +18,9 @@ def make_batch(sequence, sample_rate_hz=25.0, gyro_peak=20.0):
         gyro_x_deg_s=[gyro_peak * math.sin((phase_offset + i) * 0.2) for i in indexes],
         gyro_y_deg_s=[2.0 for _ in indexes],
         gyro_z_deg_s=[1.0 for _ in indexes],
+        mag_x_mgauss=[300.0 for _ in indexes],
+        mag_y_mgauss=[10.0 for _ in indexes],
+        mag_z_mgauss=[-450.0 for _ in indexes],
     )
 
 

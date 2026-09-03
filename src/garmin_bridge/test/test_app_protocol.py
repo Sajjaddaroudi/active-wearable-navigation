@@ -25,6 +25,11 @@ def sample_batch(count=25):
         "gyro_x_deg_s": [0.1 for _ in range(count)],
         "gyro_y_deg_s": [1.1 for _ in range(count)],
         "gyro_z_deg_s": [0.3 for _ in range(count)],
+        "mag_x_mgauss": [300.0 for _ in range(count)],
+        "mag_y_mgauss": [10.0 for _ in range(count)],
+        "mag_z_mgauss": [-450.0 for _ in range(count)],
+        "altitude_m": 251.5,
+        "altitude_available": True,
         "phone_receive_time_ns": 1234567890,
     }
 
@@ -100,6 +105,25 @@ def test_ros_batch_conversion():
     assert len(batch.watch_timestamp_ms) == 25
     assert batch.watch_timestamp_ms[1] == 1040
     assert batch.accel_x_mg[2] == 14.0
+    assert batch.gyro_available is True
+    assert len(batch.mag_x_mgauss) == 25
+    assert batch.mag_x_mgauss[0] == 300.0
+    assert batch.mag_available is True
+    assert batch.altitude_m == 251.5
+    assert batch.altitude_available is True
     assert batch.phone_receive_time_ns == 1234567890
     assert batch.pi_receive_time_ns == 987654321
     assert imu_ack(batch.sequence) == {"type": "imu_batch_ack", "version": 1, "sequence": 12}
+
+
+def test_ros_batch_conversion_defaults_when_fields_missing():
+    data = sample_batch()
+    del data["altitude_available"]
+    stamp = Time(sec=10, nanosec=20)
+    batch = batch_from_json(data, UNASSIGNED_SESSION, stamp, "garmin_watch", 987654321)
+
+    # A client with a real magnetometer that simply omits the flag is
+    # assumed to have one (matches gyro_available's default), but altitude
+    # is assumed unavailable unless a client explicitly says otherwise.
+    assert batch.mag_available is True
+    assert batch.altitude_available is False

@@ -21,6 +21,9 @@ def batch_length(batch):
         len(batch.gyro_x_deg_s),
         len(batch.gyro_y_deg_s),
         len(batch.gyro_z_deg_s),
+        len(batch.mag_x_mgauss),
+        len(batch.mag_y_mgauss),
+        len(batch.mag_z_mgauss),
     ]
     if not lengths or len(set(lengths)) != 1:
         return None
