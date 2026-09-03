@@ -95,10 +95,12 @@ class AppCommandBridge(Node):
     async def _handle_message(self, raw):
         data, error = parse_json(raw)
         if error:
+            self.get_logger().warning(f"rejected message: invalid JSON: {raw!r}")
             return error
 
         error = validate_envelope(data)
         if error:
+            self.get_logger().warning(f"rejected message: {error['message']}: {data!r}")
             return error
 
         msg_type = data["type"]
@@ -113,6 +115,7 @@ class AppCommandBridge(Node):
             return await self._stop_session()
         if msg_type == "imu_batch":
             return self._publish_imu_batch(data)
+        self.get_logger().warning(f"rejected message: unsupported type {msg_type!r}")
         return error_response("Unsupported message type")
 
     async def _start_session(self, label):
@@ -193,13 +196,20 @@ class AppCommandBridge(Node):
 
     def _publish_imu_batch(self, data):
         if not validate_imu_batch(data):
+            self.get_logger().warning(f"rejected imu_batch: failed schema validation: {data!r}")
             return error_response("Invalid IMU batch")
 
         try:
             now = self.get_clock().now()
             _, session_id = self._current_state()
             batch = batch_from_json(data, session_id, now.to_msg(), self.frame_id, now.nanoseconds)
-        except (TypeError, ValueError, OverflowError):
+        except (TypeError, ValueError, OverflowError, AssertionError) as exc:
+            # AssertionError comes from the generated ROS message field
+            # setters (e.g. a negative value for a uint64[] field) - it must
+            # be caught here too, otherwise it propagates out of the asyncio
+            # message loop and kills the entire client connection instead of
+            # just rejecting the one bad batch.
+            self.get_logger().warning(f"rejected imu_batch: {exc}: {data!r}")
             return error_response("Invalid IMU batch")
 
         self.imu_pub.publish(batch)

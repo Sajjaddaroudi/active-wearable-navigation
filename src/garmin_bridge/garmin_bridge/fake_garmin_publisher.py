@@ -34,6 +34,7 @@ class FakeGarminPublisher(Node):
         batch.header.stamp = self.get_clock().now().to_msg()
         batch.header.frame_id = self.frame_id
         batch.sequence = self.sequence
+        batch.gyro_available = True
         batch.pi_receive_time_ns = self.get_clock().now().nanoseconds
 
         step_ms = round(1000.0 / self.sample_rate_hz)

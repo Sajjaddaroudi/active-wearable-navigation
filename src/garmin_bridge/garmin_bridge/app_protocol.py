@@ -84,6 +84,10 @@ def batch_from_json(data, session_id, stamp, frame_id, pi_receive_time_ns):
     batch.gyro_x_deg_s = [float(v) for v in data["gyro_x_deg_s"]]
     batch.gyro_y_deg_s = [float(v) for v in data["gyro_y_deg_s"]]
     batch.gyro_z_deg_s = [float(v) for v in data["gyro_z_deg_s"]]
+    # Older/other clients that don't send this field are assumed to have a
+    # real gyroscope (the pre-existing behavior), so evaluate_imu's
+    # gyroscope check still fires normally for them.
+    batch.gyro_available = bool(data.get("gyro_available", True))
     batch.phone_receive_time_ns = int(data.get("phone_receive_time_ns", 0))
     batch.pi_receive_time_ns = pi_receive_time_ns
     return batch

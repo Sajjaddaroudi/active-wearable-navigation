@@ -12,6 +12,7 @@ float32[] accel_z_mg
 float32[] gyro_x_deg_s
 float32[] gyro_y_deg_s
 float32[] gyro_z_deg_s
+bool gyro_available
 
 uint64 phone_receive_time_ns
 uint64 pi_receive_time_ns

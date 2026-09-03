@@ -77,18 +77,31 @@ class SessionManager(Node):
         self.metadata = base_metadata(self.session_id, self.label, self.repo_root, params)
         write_metadata(self.session_dir / "metadata.yaml", self.metadata)
 
+        # rosbag2 record needs to complete DDS discovery and subscribe to the
+        # publishers before it will actually capture anything. A fixed sleep
+        # here only checked the process hadn't crashed - it did not guarantee
+        # the recorder was subscribed yet, so a client that starts streaming
+        # immediately after "recording started" could have its first batch
+        # (or more, under load) silently dropped. Wait for the subscriber
+        # count on the raw topic to actually increase instead.
+        watch_topic = RECORDED_TOPICS[0]
+        baseline_subscribers = self.count_subscribers(watch_topic)
+
         cmd = ["ros2", "bag", "record", "-o", str(bag_dir), *RECORDED_TOPICS]
         self.bag_process = subprocess.Popen(
             cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
-        time.sleep(1.0)
-        if self.bag_process.poll() is not None:
+        if not self._wait_for_recorder_ready(watch_topic, baseline_subscribers):
+            if self.bag_process.poll() is None:
+                self.bag_process.terminate()
+                self.bag_process.wait(timeout=4.0)
             self.metadata["status"] = "failed"
             write_metadata(self.session_dir / "metadata.yaml", self.metadata)
             response.success = False
             response.session_id = self.session_id
             response.session_directory = str(self.session_dir)
-            response.message = "rosbag2 failed to start"
+            response.message = "rosbag2 recorder did not become ready in time"
+            self.bag_process = None
             return response
 
         self.recording = True
@@ -99,6 +112,16 @@ class SessionManager(Node):
         response.session_directory = str(self.session_dir)
         response.message = "recording started"
         return response
+
+    def _wait_for_recorder_ready(self, topic, baseline_subscribers, timeout_s=5.0):
+        deadline = time.time() + timeout_s
+        while time.time() < deadline:
+            if self.bag_process.poll() is not None:
+                return False
+            if self.count_subscribers(topic) > baseline_subscribers:
+                return True
+            time.sleep(0.05)
+        return False
 
     def stop_session(self, request, response):
         if not self.recording:
@@ -116,6 +139,15 @@ class SessionManager(Node):
         return response
 
     def _finish_recording(self, status):
+        # Publish the terminal state and give the still-running recorder a
+        # moment to receive and flush it before we kill the process out from
+        # under it - otherwise the final transition is never captured in the
+        # bag (recording=False here only affects this in-memory state; the
+        # bag process is stopped below).
+        self.recording = False
+        self.publish_state("stopping")
+        time.sleep(0.2)
+
         if self.bag_process and self.bag_process.poll() is None:
             self.bag_process.send_signal(signal.SIGINT)
             try:
@@ -131,7 +163,6 @@ class SessionManager(Node):
             self.metadata["status"] = status
             write_metadata(self.session_dir / "metadata.yaml", self.metadata)
 
-        self.recording = False
         self.bag_process = None
         self.publish_state("idle")
 

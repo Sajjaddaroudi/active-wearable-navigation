@@ -32,7 +32,12 @@ def valid_batch(batch):
     if not count:
         return False
     stamps = batch.watch_timestamp_ms
-    return all(stamps[i] > stamps[i - 1] for i in range(1, len(stamps)))
+    # Watch timestamps have millisecond resolution, so two genuinely distinct
+    # samples ~32ms apart can occasionally round to the same millisecond
+    # (observed on real Forerunner 165 hardware). That is coarse clock
+    # resolution, not corrupted data, so only an actual reversal (time going
+    # backwards) should invalidate the batch - a tie should not.
+    return all(stamps[i] >= stamps[i - 1] for i in range(1, len(stamps)))
 
 
 def relative_sample_times(batch, anchor_time):

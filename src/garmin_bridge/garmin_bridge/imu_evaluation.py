@@ -122,7 +122,11 @@ def evaluate_batches(
             continue
         stamps = list(batch.watch_timestamp_ms)
         steps = [stamps[i] - stamps[i - 1] for i in range(1, len(stamps))]
-        if any(step <= 0 for step in steps):
+        # A tie (step == 0) is coarse millisecond timestamp resolution on
+        # real watch hardware, not corrupted data - only a reversal
+        # (negative step) indicates an actual problem. Keep in sync with
+        # imu_tools.valid_batch's tolerance.
+        if any(step < 0 for step in steps):
             malformed += 1
             continue
         if not all(_finite(getattr(batch, field)) for field in IMU_VALUE_FIELDS):
@@ -244,9 +248,26 @@ def evaluate_batches(
     else:
         checks.append(CheckResult("accelerometer", "FAIL", "no accelerometer data"))
 
+    # A watch with no gyroscope hardware (e.g. Forerunner 165) correctly
+    # reports gyro_available=False and sends zero-filled gyro arrays for
+    # transport compatibility. That's an expected device limitation, not a
+    # recording defect, so it should not fail the trial the way a
+    # gyro-equipped watch producing suspiciously flat data would.
+    gyro_hardware_available = any(
+        getattr(batch, "gyro_available", True) for batch in valid_batches
+    ) if valid_batches else True
+
     if gyro_magnitudes:
         stats["gyro_peak_deg_s"] = max(gyro_magnitudes)
-        if stats["gyro_peak_deg_s"] >= minimum_gyro_peak_deg_s:
+        if not gyro_hardware_available and stats["gyro_peak_deg_s"] < minimum_gyro_peak_deg_s:
+            checks.append(
+                CheckResult(
+                    "gyroscope",
+                    "WARN",
+                    "device reports no gyroscope hardware; accelerometer-only trial",
+                )
+            )
+        elif stats["gyro_peak_deg_s"] >= minimum_gyro_peak_deg_s:
             checks.append(
                 CheckResult(
                     "gyroscope",
