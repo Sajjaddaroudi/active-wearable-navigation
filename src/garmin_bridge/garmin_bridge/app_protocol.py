@@ -1,6 +1,6 @@
 import json
 
-from wearnav_interfaces.msg import GarminImuBatch
+from wearnav_interfaces.msg import BleRssiReading, GarminImuBatch
 
 
 PROTOCOL_VERSION = 1
@@ -107,3 +107,31 @@ def batch_from_json(data, session_id, stamp, frame_id, pi_receive_time_ns):
 
 def imu_ack(sequence):
     return {"type": "imu_batch_ack", "version": PROTOCOL_VERSION, "sequence": sequence}
+
+
+def validate_ble_rssi(data):
+    beacon_id = data.get("beacon_id")
+    if not isinstance(beacon_id, str) or not beacon_id:
+        return False
+
+    rssi_dbm = data.get("rssi_dbm")
+    if isinstance(rssi_dbm, bool) or not isinstance(rssi_dbm, int):
+        return False
+
+    return True
+
+
+def ble_rssi_from_json(data, session_id, sequence, stamp, pi_receive_time_ns):
+    reading = BleRssiReading()
+    reading.header.stamp = stamp
+    reading.session_id = session_id or UNASSIGNED_SESSION
+    reading.sequence = sequence
+    reading.beacon_id = data["beacon_id"]
+    reading.rssi_dbm = data["rssi_dbm"]
+    reading.phone_receive_time_ns = int(data.get("phone_receive_time_ns", 0))
+    reading.pi_receive_time_ns = pi_receive_time_ns
+    return reading
+
+
+def ble_ack(beacon_id):
+    return {"type": "ble_rssi_ack", "version": PROTOCOL_VERSION, "beacon_id": beacon_id}

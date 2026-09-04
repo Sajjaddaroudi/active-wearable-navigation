@@ -3,11 +3,14 @@ from builtin_interfaces.msg import Time
 from garmin_bridge.app_protocol import (
     UNASSIGNED_SESSION,
     batch_from_json,
+    ble_ack,
+    ble_rssi_from_json,
     error_response,
     hello_response,
     imu_ack,
     parse_json,
     ping_response,
+    validate_ble_rssi,
     validate_envelope,
     validate_imu_batch,
 )
@@ -30,6 +33,16 @@ def sample_batch(count=25):
         "mag_z_mgauss": [-450.0 for _ in range(count)],
         "altitude_m": 251.5,
         "altitude_available": True,
+        "phone_receive_time_ns": 1234567890,
+    }
+
+
+def sample_ble_rssi():
+    return {
+        "type": "ble_rssi",
+        "version": 1,
+        "beacon_id": "AA:BB:CC:DD:EE:FF",
+        "rssi_dbm": -67,
         "phone_receive_time_ns": 1234567890,
     }
 
@@ -127,3 +140,38 @@ def test_ros_batch_conversion_defaults_when_fields_missing():
     # is assumed unavailable unless a client explicitly says otherwise.
     assert batch.mag_available is True
     assert batch.altitude_available is False
+
+
+def test_ble_rssi_validation():
+    assert validate_ble_rssi(sample_ble_rssi())
+
+    missing_beacon = sample_ble_rssi()
+    missing_beacon["beacon_id"] = ""
+    assert not validate_ble_rssi(missing_beacon)
+
+    bad_rssi_type = sample_ble_rssi()
+    bad_rssi_type["rssi_dbm"] = "-67"
+    assert not validate_ble_rssi(bad_rssi_type)
+
+    bad_rssi_bool = sample_ble_rssi()
+    bad_rssi_bool["rssi_dbm"] = True
+    assert not validate_ble_rssi(bad_rssi_bool)
+
+
+def test_ros_ble_rssi_conversion():
+    data = sample_ble_rssi()
+    stamp = Time(sec=10, nanosec=20)
+    reading = ble_rssi_from_json(data, UNASSIGNED_SESSION, 5, stamp, 987654321)
+
+    assert reading.header.stamp.sec == 10
+    assert reading.session_id == UNASSIGNED_SESSION
+    assert reading.sequence == 5
+    assert reading.beacon_id == "AA:BB:CC:DD:EE:FF"
+    assert reading.rssi_dbm == -67
+    assert reading.phone_receive_time_ns == 1234567890
+    assert reading.pi_receive_time_ns == 987654321
+    assert ble_ack(reading.beacon_id) == {
+        "type": "ble_rssi_ack",
+        "version": 1,
+        "beacon_id": "AA:BB:CC:DD:EE:FF",
+    }

@@ -35,6 +35,16 @@ def make_batch(sequence, start_ms, samples=25, sample_rate_hz=25.0):
     }
 
 
+def make_ble_rssi(beacon_id, rssi_dbm):
+    return {
+        "type": "ble_rssi",
+        "version": 1,
+        "beacon_id": beacon_id,
+        "rssi_dbm": rssi_dbm,
+        "phone_receive_time_ns": time.time_ns(),
+    }
+
+
 async def send_and_expect(websocket, message, expected_type):
     await websocket.send(json.dumps(message))
     response = json.loads(await websocket.recv())
@@ -68,6 +78,17 @@ async def run(args):
             ack = await send_and_expect(websocket, batch, "imu_batch_ack")
             if ack.get("sequence") != sequence:
                 raise RuntimeError(f"unexpected ack: {ack}")
+
+            if args.ble and sequence % 2 == 0:
+                # Simulate the wearer slowly walking toward the beacon: RSSI
+                # rises (less negative) over the trial - slower cadence than
+                # the once-per-second IMU batches, matching a real BLE scan.
+                rssi_dbm = -90 + min(60, sequence * 3)
+                ble_reading = make_ble_rssi(args.beacon_id, rssi_dbm)
+                ble_ack_msg = await send_and_expect(websocket, ble_reading, "ble_rssi_ack")
+                if ble_ack_msg.get("beacon_id") != args.beacon_id:
+                    raise RuntimeError(f"unexpected ble ack: {ble_ack_msg}")
+
             watch_ms += 1000
             await asyncio.sleep(1.0)
 
@@ -87,6 +108,9 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--label", default="app_bridge_test")
     parser.add_argument("--batches", type=int, default=6)
+    parser.add_argument("--ble", action="store_true", default=True)
+    parser.add_argument("--no-ble", dest="ble", action="store_false")
+    parser.add_argument("--beacon-id", default="AA:BB:CC:DD:EE:FF")
     args = parser.parse_args()
     asyncio.run(run(args))
 

@@ -11,6 +11,7 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from wearnav_interfaces.msg import SessionState
 from wearnav_interfaces.srv import StartSession, StopSession
 from wearnav_recorder.session_utils import (
+    RAW_INPUT_TOPICS,
     RECORDED_TOPICS,
     base_metadata,
     make_session_id,
@@ -81,17 +82,27 @@ class SessionManager(Node):
         # publishers before it will actually capture anything. A fixed sleep
         # here only checked the process hadn't crashed - it did not guarantee
         # the recorder was subscribed yet, so a client that starts streaming
-        # immediately after "recording started" could have its first batch
+        # immediately after "recording started" could have its first message
         # (or more, under load) silently dropped. Wait for the subscriber
-        # count on the raw topic to actually increase instead.
-        watch_topic = RECORDED_TOPICS[0]
-        baseline_subscribers = self.count_subscribers(watch_topic)
+        # count on each raw input topic to actually increase instead. Each
+        # topic is matched independently in DDS even within the same
+        # rosbag2 process, so watching only imu_raw does not guarantee
+        # ble/rssi_raw has been matched yet too - this bit us for real: the
+        # first BLE reading of a session was silently lost the same way
+        # batch 0 used to be. Only RAW_INPUT_TOPICS (not every
+        # RECORDED_TOPICS entry) are waited on: a derived topic like
+        # /wearnav/garmin/imu already has a live publisher from node
+        # startup regardless of whether data has flowed, so including it
+        # here would wait on a DDS match that isn't protecting against the
+        # same failure mode and just adds risk of the whole wait timing out.
+        watch_topics = [t for t in RAW_INPUT_TOPICS if self.count_publishers(t) > 0]
+        baseline_subscribers = {t: self.count_subscribers(t) for t in watch_topics}
 
         cmd = ["ros2", "bag", "record", "-o", str(bag_dir), *RECORDED_TOPICS]
         self.bag_process = subprocess.Popen(
             cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
-        if not self._wait_for_recorder_ready(watch_topic, baseline_subscribers):
+        if not self._wait_for_recorder_ready(watch_topics, baseline_subscribers):
             if self.bag_process.poll() is None:
                 self.bag_process.terminate()
                 self.bag_process.wait(timeout=4.0)
@@ -113,12 +124,12 @@ class SessionManager(Node):
         response.message = "recording started"
         return response
 
-    def _wait_for_recorder_ready(self, topic, baseline_subscribers, timeout_s=5.0):
+    def _wait_for_recorder_ready(self, topics, baseline_subscribers, timeout_s=8.0):
         deadline = time.time() + timeout_s
         while time.time() < deadline:
             if self.bag_process.poll() is not None:
                 return False
-            if self.count_subscribers(topic) > baseline_subscribers:
+            if all(self.count_subscribers(t) > baseline_subscribers[t] for t in topics):
                 return True
             time.sleep(0.05)
         return False

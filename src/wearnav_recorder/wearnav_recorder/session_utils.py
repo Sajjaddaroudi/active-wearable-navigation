@@ -10,7 +10,25 @@ import yaml
 RECORDED_TOPICS = [
     "/wearnav/garmin/imu_raw",
     "/wearnav/garmin/imu",
+    "/wearnav/ble/rssi_raw",
     "/wearnav/session/state",
+]
+
+# Topics fed directly by an external bridge (phone -> app_command_bridge),
+# where the very first message can race the rosbag2 recorder's DDS discovery
+# and be silently lost if we don't wait for it. Deliberately NOT every
+# RECORDED_TOPICS entry: /wearnav/garmin/imu is a *derived* topic - its
+# publisher (garmin_imu_converter) exists from node startup regardless of
+# whether any data has flowed yet, so a generic "does this topic have a
+# live publisher" check sweeps it in too, waiting on a DDS match that isn't
+# protecting against the same kind of loss (converted samples keep arriving
+# continuously as long as imu_raw does) and just adds an extra match to the
+# same timeout window. This list is deliberately explicit rather than
+# derived, so adding a future processing/derived topic to RECORDED_TOPICS
+# doesn't silently widen what start_session blocks on.
+RAW_INPUT_TOPICS = [
+    "/wearnav/garmin/imu_raw",
+    "/wearnav/ble/rssi_raw",
 ]
 
 

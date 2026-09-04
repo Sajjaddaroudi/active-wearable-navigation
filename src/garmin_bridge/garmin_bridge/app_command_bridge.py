@@ -9,16 +9,19 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profi
 from garmin_bridge.app_protocol import (
     UNASSIGNED_SESSION,
     batch_from_json,
+    ble_ack,
+    ble_rssi_from_json,
     error_response,
     hello_response,
     imu_ack,
     parse_json,
     ping_response,
+    validate_ble_rssi,
     validate_envelope,
     validate_imu_batch,
 )
 from garmin_bridge.websockets_compat import patch_websockets_asyncio
-from wearnav_interfaces.msg import GarminImuBatch, SessionState
+from wearnav_interfaces.msg import BleRssiReading, GarminImuBatch, SessionState
 from wearnav_interfaces.srv import StartSession, StopSession
 
 
@@ -40,6 +43,10 @@ class AppCommandBridge(Node):
         self.imu_pub = self.create_publisher(
             GarminImuBatch, "/wearnav/garmin/imu_raw", qos_profile_sensor_data
         )
+        self.ble_pub = self.create_publisher(
+            BleRssiReading, "/wearnav/ble/rssi_raw", qos_profile_sensor_data
+        )
+        self._ble_sequence = 0
         self.start_client = self.create_client(StartSession, "/wearnav/session/start")
         self.stop_client = self.create_client(StopSession, "/wearnav/session/stop")
 
@@ -115,6 +122,8 @@ class AppCommandBridge(Node):
             return await self._stop_session()
         if msg_type == "imu_batch":
             return self._publish_imu_batch(data)
+        if msg_type == "ble_rssi":
+            return self._publish_ble_rssi(data)
         self.get_logger().warning(f"rejected message: unsupported type {msg_type!r}")
         return error_response("Unsupported message type")
 
@@ -214,6 +223,25 @@ class AppCommandBridge(Node):
 
         self.imu_pub.publish(batch)
         return imu_ack(batch.sequence)
+
+    def _publish_ble_rssi(self, data):
+        if not validate_ble_rssi(data):
+            self.get_logger().warning(f"rejected ble_rssi: failed schema validation: {data!r}")
+            return error_response("Invalid BLE RSSI reading")
+
+        try:
+            now = self.get_clock().now()
+            _, session_id = self._current_state()
+            self._ble_sequence += 1
+            reading = ble_rssi_from_json(
+                data, session_id, self._ble_sequence, now.to_msg(), now.nanoseconds
+            )
+        except (TypeError, ValueError, OverflowError, AssertionError) as exc:
+            self.get_logger().warning(f"rejected ble_rssi: {exc}: {data!r}")
+            return error_response("Invalid BLE RSSI reading")
+
+        self.ble_pub.publish(reading)
+        return ble_ack(reading.beacon_id)
 
     def destroy_node(self):
         if self._ready.wait(timeout=1.0) and self._loop and self._stop_event:

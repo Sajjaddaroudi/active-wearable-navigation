@@ -7,6 +7,7 @@ find_package(std_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/GarminImuBatch.msg"
+  "msg/BleRssiReading.msg"
   "msg/SessionState.msg"
   "srv/StartSession.srv"
   "srv/StopSession.srv"
